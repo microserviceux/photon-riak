@@ -24,6 +24,7 @@
 
 (defrecord RiakDB [riak nodes bucket]
   db/DB
+  (driver-name [this] "riak")
   (fetch [this stream-name id]
     (:body (client/get (riak-url this id))))
   (delete! [this id]
