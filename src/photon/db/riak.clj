@@ -1,4 +1,4 @@
-(ns photon_riak.core
+(ns photon.db.riak
   (:require [clj-http.client :as client]
             [cheshire.core :as json]
             [clj-time.core :as time]
