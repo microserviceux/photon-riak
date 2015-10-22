@@ -10,17 +10,20 @@
 (import (io Riak))
 
 (def photon "photon")
-(def s-bucket (:riak.default_bucket conf/config))
+(def bucket (:riak.default_bucket conf/config))
 
-(def s-nodes (map (fn [k] (get conf/config k))
-                  (filter #(.startsWith (name %) "riak.node") (keys conf/config))))
-(def entry-point (first s-nodes))
+(def nodes (map (fn [k] (get conf/config k))
+                (filter #(.startsWith (name %) "riak.node")
+                        (keys conf/config))))
+(def entry-point (first nodes))
 
 (defn bucket-url [rdb]
   (str "http://" entry-point ":8098/types/"
        photon "/buckets/" (:bucket rdb) "/keys"))
 (defn riak-url [rdb id]
   (str (bucket-url rdb) "/" id))
+
+(def riak (Riak. bucket "photon" (into-array String nodes)))
 
 (defrecord RiakDB [riak nodes bucket]
   db/DB
@@ -58,13 +61,4 @@
         []
         (concat res
                 (lazy-seq (db/lazy-events-page this stream-name l-date (inc page))))))))
-
-(defn m-riak
-  ([nodes bucket]
-   (->RiakDB (Riak. bucket "photon" (into-array String nodes))
-             nodes bucket))
-  ([bucket]
-   (m-riak s-nodes bucket)))
-
-(def riak (memoize m-riak))
 
