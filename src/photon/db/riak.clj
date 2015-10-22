@@ -23,9 +23,10 @@
 (defn riak-url [rdb id]
   (str (bucket-url rdb) "/" id))
 
-(def riak (Riak. bucket "photon" (into-array String nodes)))
+(defn m-riak [] (Riak. bucket "photon" (into-array String nodes)))
+(def riak (memoize m-riak))
 
-(defrecord RiakDB [riak nodes bucket]
+(defrecord RiakDB []
   db/DB
   (driver-name [this] "riak")
   (fetch [this stream-name id]
@@ -49,14 +50,14 @@
       (client/put (riak-url this id) {:body wrapper :content-type :json})))
   (search [this id] (:body (client/get (riak-url this id))))
   (store [this payload]
-    (.persist riak "__all__" "event" (json/generate-string payload)))
+    (.persist (riak) "__all__" "event" (json/generate-string payload)))
   (distinct-values [this k] ["events"])
   (lazy-events [this stream-name date]
     (db/lazy-events-page this stream-name date 1)) 
   (lazy-events-page [this stream-name date page]
     (let [l-date (if (string? date) (read-string date) date)
           res (map #(clojure.walk/keywordize-keys (into {} %))
-                   (into [] (.eventsSince riak l-date stream-name page)))]
+                   (into [] (.eventsSince (riak) l-date stream-name page)))]
       (if (< (.size res) 1)
         []
         (concat res
