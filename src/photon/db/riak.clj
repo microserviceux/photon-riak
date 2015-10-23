@@ -2,8 +2,8 @@
   (:require [clj-http.client :as client]
             [cheshire.core :as json]
             [clj-time.core :as time]
-            [photon.db.core :as db]
-            [photon.config.core :as conf]
+            [photon.db :as db]
+            [photon.config :as conf]
             [clojure.tools.logging :as log]
             [clj-time.format :as time-format]))
 
@@ -26,7 +26,7 @@
 (defn m-riak [] (Riak. bucket "photon" (into-array String nodes)))
 (def riak (memoize m-riak))
 
-(defrecord RiakDB []
+(db/defdbplugin RiakDB []
   db/DB
   (driver-name [this] "riak")
   (fetch [this stream-name id]
