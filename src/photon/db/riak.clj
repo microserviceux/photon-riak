@@ -3,30 +3,33 @@
             [cheshire.core :as json]
             [clj-time.core :as time]
             [photon.db :as db]
-            [photon.config :as conf]
             [clojure.tools.logging :as log]
             [clj-time.format :as time-format]))
 
 (import (io Riak))
 
 (def photon "photon")
-(def bucket (:riak.default_bucket conf/config))
+(defn bucket [conf]
+  (:riak.default_bucket conf))
 
-(def nodes (map (fn [k] (get conf/config k))
-                (filter #(.startsWith (name %) "riak.node")
-                        (keys conf/config))))
-(def entry-point (first nodes))
+(defn nodes [conf]
+  (map (fn [k] (get conf k))
+       (filter #(.startsWith (name %) "riak.node")
+               (keys conf))))
+
+(defn entry-point [conf]
+  (first (nodes conf)))
 
 (defn bucket-url [rdb]
-  (str "http://" entry-point ":8098/types/"
+  (str "http://" (entry-point (:conf rdb)) ":8098/types/"
        photon "/buckets/" (:bucket rdb) "/keys"))
 (defn riak-url [rdb id]
-  (str (bucket-url rdb) "/" id))
+  (str (bucket-url (:conf rdb)) "/" id))
 
-(defn m-riak [] (Riak. bucket "photon" (into-array String nodes)))
+(defn m-riak [conf] (Riak. (bucket conf) "photon" (into-array String nodes)))
 (def riak (memoize m-riak))
 
-(db/defdbplugin RiakDB []
+(db/defdbplugin RiakDB [conf]
   db/DB
   (driver-name [this] "riak")
   (fetch [this stream-name id]
@@ -38,7 +41,9 @@
     (let [body (:body (client/get (str (bucket-url this) "?keys=true")))
           js (json/parse-string body true)
           k (first (:keys js))]
-      (dorun (map #(try (db/delete! this %) (catch Exception e (log/debug (.getMessage e)))) (:keys js)))))
+      (dorun (map #(try (db/delete! this %)
+                        (catch Exception e
+                          (log/debug (.getMessage e)))) (:keys js)))))
   (put [this data]
     (let [id (db/uuid)
           wrapper (json/generate-string
