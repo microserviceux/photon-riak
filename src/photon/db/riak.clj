@@ -29,7 +29,7 @@
 (defn m-riak [conf] (Riak. (bucket conf) "photon" (into-array String nodes)))
 (def riak (memoize m-riak))
 
-(db/defdbplugin RiakDB [conf]
+(defrecord RiakDB [conf]
   db/DB
   (driver-name [this] "riak")
   (fetch [this stream-name id]
